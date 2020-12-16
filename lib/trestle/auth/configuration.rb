@@ -60,10 +60,22 @@ module Trestle
 
       option :login_url, -> { login_url }, evaluate: false
 
-      option :redirect_on_login, -> { Trestle.config.path }, evaluate: false
+      option :redirect_on_login, -> { Trestle.config.root }, evaluate: false
       option :redirect_on_logout, -> { login_url }, evaluate: false
       option :redirect_on_access_denied, -> {
         authorized?(:index) ? admin.path(:index) : Trestle.config.root
+      }, evaluate: false
+
+      option :redirect_on_access_denied, -> {
+        if authorized?(:index)
+          admin.path(:index)
+        else
+          default_admin = Trestle.admins.values.find { |admin|
+            admin.new(self).authorized?(:index)
+          }
+
+          default_admin ? default_admin.path : Trestle.config.root
+        end
       }, evaluate: false
 
       option :logo
@@ -90,6 +102,10 @@ module Trestle
         else
           assign(:authorization_adapter, options_or_class)
         end
+      end
+
+      def authorize(&block)
+        authorize_with(DSL.build(&block))
       end
 
       option :warden, Warden.new
